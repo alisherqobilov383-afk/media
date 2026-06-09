@@ -44,27 +44,29 @@ FOOTER_TEXT = "\n\n[ХАБАРИНГИЗНИ ЮБОРМОҚЧИ БЎЛСАНГИ
 
 
 # ================= XABARLARNI USHLASH VA YUBORISH =================
-@app.on_message(filters.chat(SOURCE_CHANNEL))
+@app.on_message()
 async def forward_and_edit(client: Client, message: Message):
-    try:
-        # Matn yoki captionni yangilash
-        new_text = (message.caption or message.text or "") + FOOTER_TEXT
+    # Kanal username'ini tekshiramiz (ID bo'lsa ham ishlaydi)
+    chat_username = f"@{message.chat.username}" if message.chat.username else str(message.chat.id)
+    
+    # Faqat bizga kerakli kanaldan kelganini tekshiramiz
+    if chat_username == SOURCE_CHANNEL or str(message.chat.id) == SOURCE_CHANNEL:
+        try:
+            new_text = (message.caption or message.text or "") + FOOTER_TEXT
 
-        if message.photo:
-            await client.send_photo(chat_id=TARGET_CHANNEL, photo=message.photo.file_id, caption=new_text)
-            print("📸 Rasm yuborildi!")
-        elif message.video:
-            await client.send_video(chat_id=TARGET_CHANNEL, video=message.video.file_id, caption=new_text)
-            print("🎥 Video yuborildi!")
-        elif message.audio or message.voice:
-            file_id = message.audio.file_id if message.audio else message.voice.file_id
-            await client.send_audio(chat_id=TARGET_CHANNEL, audio=file_id, caption=new_text)
-            print("🎵 Audio yuborildi!")
-        elif message.text:
-            await client.send_message(chat_id=TARGET_CHANNEL, text=new_text)
-            print("📝 Matnli xabar yuborildi!")
-    except Exception as e:
-        print(f"❌ Xabar uzatishda xatolik: {e}")
+            if message.photo:
+                await client.send_photo(chat_id=TARGET_CHANNEL, photo=message.photo.file_id, caption=new_text)
+            elif message.video:
+                await client.send_video(chat_id=TARGET_CHANNEL, video=message.video.file_id, caption=new_text)
+            elif message.audio or message.voice:
+                file_id = message.audio.file_id if message.audio else message.voice.file_id
+                await client.send_audio(chat_id=TARGET_CHANNEL, audio=file_id, caption=new_text)
+            elif message.text:
+                await client.send_message(chat_id=TARGET_CHANNEL, text=new_text)
+                
+            print(f"✅ Xabar {TARGET_CHANNEL} ga muvaffaqiyatli yuborildi!")
+        except Exception as e:
+            print(f"❌ Xabar uzatishda xatolik: {e}")
 
 
 # ================= BOTNI 24/7 ISHLATISH VA AVTO-RESTART =================
