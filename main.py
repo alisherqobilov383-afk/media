@@ -1,62 +1,73 @@
-import asyncio
-import sys
-
-# 1. LOOPNI KODNING ENG TEPA QISMIDA YARATAMIZ (Python 3.14 uchun shart)
-try:
-    loop = asyncio.get_event_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-# 2. ENDI QOLGAN KUTUBXONALARNI IMPORT QILAMIZ
 import os
-from flask import Flask
+import copy
 from threading import Thread
+from flask import Flask
 from pyrogram import Client, filters
+from pyrogram.enums import MessageEntityType
+from pyrogram.types import Message
+from pyrogram.errors import FloodWait
+import asyncio
 
-# ... qolgan kodlar o'zgarishsiz qoladi ...
+# Flask serveri (Render uchun)
+app_flask = Flask(__name__)
 
-# Render uchun web-server (UptimeRobot bilan ishlash uchun)
-flask_app = Flask("")
-@flask_app.route("/")
+@app_flask.route("/")
 def home():
-    return "Bot 24/7 ishlamoqda!"
+    return "Bot 24/7 ishlamoqda"
 
 def run_flask():
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # Render PORT muhit o'zgaruvchisini kutadi
+    port = int(os.environ.get("PORT", 8080))
+    app_flask.run(host="0.0.0.0", port=port)
 
-Thread(target=run_flask, daemon=True).start()
-
-# Sozlamalar
+# Pyrogram sozlamalari
 API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
-SOURCE_CHANNEL = "eltuzar_live"    # @ belgisiz
-TARGET_CHANNEL = "tuztuzttt"   # @ belgisiz
+app = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
-# Client yaratish (StringSession xatosini oldini olish uchun .strip() qo'shildi)
-app = Client(
-    "render_userbot", 
-    api_id=API_ID, 
-    api_hash=API_HASH, 
-    session_string=SESSION_STRING.strip() if SESSION_STRING else None
-)
+def edit_caption_text(message: Message):
+    text = message.caption or message.text or ""
+    entities = copy.deepcopy(message.caption_entities or message.entities or [])
+    
+    links = {
+        "ХАБАРИНГИЗНИ": "https://t.me/eltuzar_uz_bot",
+        "LIVE": "https://t.me/eltuzar_livee",
+        "MEDIA": "https://t.me/eltuzar_mediaa",
+        "X": "https://x.com/eltuzar_uz",
+        "INSTAGRAM": "https://www.instagram.com/eltuzar_uz",
+        "FACEBOOK": "https://www.facebook.com/profile.php?id=61585818251235"
+    }
+    
+    for entity in entities:
+        if entity.type == MessageEntityType.TEXT_LINK:
+            word = text[entity.offset:entity.offset+entity.length].upper()
+            for key, val in links.items():
+                if key in word:
+                    entity.url = val
+    # 'return' endi funksiya ichida ekanligiga amin bo'ldik
+    return text, entities
 
-# Xabarlarni to'g'ridan-to'g'ri forward qilish (barcha turdagi xabarlar)
-@app.on_message(filters.chat(SOURCE_CHANNEL))
+@app.on_message(filters.chat("tuztuzttt"))
 async def forward_handler(client, message):
+    TARGET_CHAT = "eltuzar_livee"
     try:
-        # .copy() funksiyasi xabarni to'liq (media + caption) bilan o'tkazadi
-        await message.copy(chat_id=TARGET_CHANNEL)
-        print("✅ Xabar muvaffaqiyatli forward qilindi!")
+        text, entities = edit_caption_text(message)
+        await client.copy_message(
+            chat_id=TARGET_CHAT,
+            from_chat_id=message.chat.id,
+            message_id=message.id,
+            caption=text,
+            caption_entities=entities
+        )
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
     except Exception as e:
-        print(f"❌ Xatolik: {e}")
-
-async def main():
-    async with app:
-        print("🚀 Bot muvaffaqiyatli ishga tushdi!")
-        await asyncio.Event().wait() # Botni o'chmasligini ta'minlash
+        print(f"Xatolik: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Flask ni fon rejimida ishga tushiramiz
+    Thread(target=run_flask, daemon=True).start()
+    # Pyrogram ni asosiy oqimda ishga tushiramiz
+    app.run()
