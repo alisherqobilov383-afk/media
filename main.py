@@ -36,13 +36,10 @@ app = Client(
 SOURCE_CHAT = "tuztuzttt"
 TARGET_CHAT = "eltuzar_livee"
 
-def edit_caption_text(message):
+def edit_caption_text(message: Message):
     text = message.caption or message.text or ""
+    entities = copy.deepcopy(message.caption_entities or message.entities or [])
     
-    entities = copy.deepcopy(
-        message.caption_entities or message.entities or []
-    )
-
     links = {
         "ХАБАРИНГИЗНИ": "https://t.me/eltuzar_uz_bot",
         "LIVE": "https://t.me/eltuzar_livee",
@@ -51,14 +48,15 @@ def edit_caption_text(message):
         "INSTAGRAM": "https://www.instagram.com/eltuzar_uz",
         "FACEBOOK": "https://www.facebook.com/profile.php?id=61585818251235"
     }
-
+    
     for entity in entities:
         if entity.type == MessageEntityType.TEXT_LINK:
-            word = text[entity.offset:entity.offset + entity.length].upper()
-            for key, value in links.items():
+            word = text[entity.offset:entity.offset+entity.length].upper()
+            for key, val in links.items():
                 if key in word:
-                    entity.url = value
+                    entity.url = val
     return text, entities
+
 
 @app.on_message(filters.chat(SOURCE_CHAT))
 async def forward_handler(client, message):
