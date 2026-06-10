@@ -28,29 +28,31 @@ app = Client(
 )
 SOURCE_CHAT = "eltuzar_live"
 TARGET_CHAT = "eltuzar_livee"
-def edit_caption_text(message: Message):
-    text = message.caption or message.text or ""
-    entities = copy.deepcopy(
-        message.caption_entities or message.entities or []
-    )
+def edit_caption_text(message):
+text = message.caption or message.text or ""
+entities = copy.deepcopy(
+message.caption_entities or message.entities or []
+)
 
-    links = {
-        "ХАБАРИНГИЗНИ": "https://t.me/eltuzar_uz_bot",
-        "LIVE": "https://t.me/eltuzar_livee",
-        "MEDIA": "https://t.me/eltuzar_mediaa",
-        "X": "https://x.com/eltuzar_uz",
-        "INSTAGRAM": "https://www.instagram.com/eltuzar_uz",
-        "FACEBOOK": "https://www.facebook.com/profile.php?id=61585818251235"
-    }
-    for entity in entities:
-        if entity.type == MessageEntityType.TEXT_LINK:
-            word = text[
-                entity.offset:entity.offset + entity.length
-            ].upper()
-            for key, value in links.items():
-                if key in word:
-                    entity.url = value
-                    return text, entities
+links = {
+    "ХАБАРИНГИЗНИ": "https://t.me/eltuzar_uz_bot",
+    "LIVE": "https://t.me/eltuzar_livee",
+    "MEDIA": "https://t.me/eltuzar_mediaa",
+    "X": "https://x.com/eltuzar_uz",
+    "INSTAGRAM": "https://www.instagram.com/eltuzar_uz",
+    "FACEBOOK": "https://www.facebook.com/profile.php?id=61585818251235"
+}
+
+for entity in entities:
+    if entity.type == MessageEntityType.TEXT_LINK:
+        word = text[entity.offset:entity.offset + entity.length].upper()
+
+        for key, value in links.items():
+            if key in word:
+                entity.url = value
+
+return text, entities
+
 @app.on_message(filters.chat(SOURCE_CHAT))
 async def forward_handler(client, message):
     try:
