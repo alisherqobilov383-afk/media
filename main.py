@@ -1,10 +1,19 @@
-import os
 import asyncio
-from flask import Flask
+import sys
+
+# 1. Eng avvalo loopni yaratamiz (Importlardan oldin!)
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+# 2. Keyin kutubxonalarni import qilamiz
+import os
 from threading import Thread
+from flask import Flask
+
+# 3. Pyrogram ni import qilamiz
 from pyrogram import Client, filters, idle
 
-# Flask serveri (Render 24/7 ishlashi uchun)
+# Flask serveri
 app_flask = Flask(__name__)
 @app_flask.route("/")
 def home():
@@ -20,13 +29,11 @@ SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
 app = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
-# Handler: Manba kanaldan xabarni olib, manbani ko'rsatmasdan nusxalash
-# "SOURCE_CHANNEL" o'rniga kanal username yoki ID sini yozing
+# Xabarlarni nusxalash
 @app.on_message(filters.chat("eltuzar_media")) 
 async def copy_handler(client, message):
-    TARGET_CHAT = "eltuzar_mediaa" # Qayerga yuborilishi
+    TARGET_CHAT = "eltuzar_mediaa" 
     try:
-        # copy_message - manbani ko'rsatmaydi, xabarni toza nusxalaydi
         await client.copy_message(
             chat_id=TARGET_CHAT,
             from_chat_id=message.chat.id,
@@ -41,7 +48,6 @@ async def start_userbot():
     await idle()
 
 if __name__ == "__main__":
-    # Flask ni fon rejimida ishga tushiramiz
     Thread(target=run_flask, daemon=True).start()
-    # Userbot ni Python 3.14+ uchun mos usulda ishga tushiramiz
-    asyncio.run(start_userbot())
+    # 4. Asosiy loopni ishlatamiz
+    loop.run_until_complete(start_userbot())
