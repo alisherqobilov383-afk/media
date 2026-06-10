@@ -58,8 +58,6 @@ def edit_caption_text(message):
             for key, value in links.items():
                 if key in word:
                     entity.url = value
-
-    # UCHBU QATOR FUNKSIYA ICHIDA BO'LISHI SHART (4 TA BO'SHLIQ)
     return text, entities
 
 @app.on_message(filters.chat(SOURCE_CHAT))
