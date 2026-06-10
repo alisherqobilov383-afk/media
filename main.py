@@ -1,48 +1,50 @@
 import os
 import asyncio
-from telethon import TelegramClient, events
 from flask import Flask
 from threading import Thread
+from pyrogram import Client, filters
 
-# --- Sozlamalar ---
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
-# StringSession ishlatish uchun (avvalgi javobdagi kabi)
-SESSION_STRING = os.environ.get("SESSION_STRING")
-
-# Kanal username'lari (masalan: '@kanalnomi')
-SOURCE_CHANNEL = '@eltuzar_live' 
-TARGET_CHANNEL = '@tuztuzttt'
-
-from telethon.sessions import StringSession
-client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-
-app = Flask(__name__)
-
-@app.route('/')
+# Render uchun web-server (UptimeRobot bilan ishlash uchun)
+flask_app = Flask("")
+@flask_app.route("/")
 def home():
-    return "Userbot is running!"
+    return "Bot 24/7 ishlamoqda!"
 
-def run_web():
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-# --- Forward logikasi ---
-@client.on(events.NewMessage(chats=SOURCE_CHANNEL))
-async def handler(event):
+Thread(target=run_flask, daemon=True).start()
+
+# Sozlamalar
+API_ID = int(os.environ.get("API_ID", 0))
+API_HASH = os.environ.get("API_HASH", "")
+SESSION_STRING = os.environ.get("SESSION_STRING", "")
+
+SOURCE_CHANNEL = "eltuzar_live"    # @ belgisiz
+TARGET_CHANNEL = "tuztuzttt"   # @ belgisiz
+
+# Client yaratish (StringSession xatosini oldini olish uchun .strip() qo'shildi)
+app = Client(
+    "render_userbot", 
+    api_id=API_ID, 
+    api_hash=API_HASH, 
+    session_string=SESSION_STRING.strip() if SESSION_STRING else None
+)
+
+# Xabarlarni to'g'ridan-to'g'ri forward qilish (barcha turdagi xabarlar)
+@app.on_message(filters.chat(SOURCE_CHANNEL))
+async def forward_handler(client, message):
     try:
-        # Xabarni forward qilish
-        await client.forward_messages(TARGET_CHANNEL, event.message)
-        print(f"Xabar {SOURCE_CHANNEL} dan {TARGET_CHANNEL} ga forward qilindi.")
+        # .copy() funksiyasi xabarni to'liq (media + caption) bilan o'tkazadi
+        await message.copy(chat_id=TARGET_CHANNEL)
+        print("✅ Xabar muvaffaqiyatli forward qilindi!")
     except Exception as e:
-        print(f"Xatolik yuz berdi: {e}")
+        print(f"❌ Xatolik: {e}")
 
 async def main():
-    await client.start()
-    print("Userbot muvaffaqiyatli ishga tushdi!")
-    await client.run_until_disconnected()
+    async with app:
+        print("🚀 Bot muvaffaqiyatli ishga tushdi!")
+        await asyncio.Event().wait() # Botni o'chmasligini ta'minlash
 
-if __name__ == '__main__':
-    # Flask serverini ishga tushirish
-    Thread(target=run_web).start()
-    # Botni ishga tushirish
+if __name__ == "__main__":
     asyncio.run(main())
