@@ -33,8 +33,8 @@ API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
-SOURCE_CHANNEL = "@eltuzar_live"
-TARGET_CHANNEL = "@eltuzar_livee"
+SOURCE_CHANNEL = "@eltuzar_media"
+TARGET_CHANNEL = "@eltuzar_mediaa"
 
 app = Client("render_userbot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
