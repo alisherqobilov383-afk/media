@@ -1,87 +1,47 @@
 import os
 import asyncio
-
-# 1. PYTHON 3.14 UCHUN PYROGRAM EVENT-LOOP XATOSINI TUZATISH
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
 from flask import Flask
 from threading import Thread
-from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram import Client, filters, idle
 
-# ================= RENDER UCHUN VEB SERVER =================
-flask_app = Flask("")
-
-@flask_app.route("/")
+# Flask serveri (Render 24/7 ishlashi uchun)
+app_flask = Flask(__name__)
+@app_flask.route("/")
 def home():
-    return "Bot 24/7 rejimida muvaffaqiyatli ishlayapti!"
+    return "Userbot 24/7 ishlamoqda"
 
 def run_flask():
-    port = int(os.environ.get("PORT", 8080))
-    flask_app.run(host="0.0.0.0", port=port)
+    app_flask.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-Thread(target=run_flask, daemon=True).start()
-print("🌐 Web-server Render uchun muvaffaqiyatli ishga tushdi...")
-
-
-# ================= USERBOT SOZLAMALARI =================
+# Userbot sozlamalari
 API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
-SOURCE_CHANNEL = "@eltuzar_media"
-TARGET_CHANNEL = "@eltuzar_mediaa"
+app = Client("userbot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
-app = Client("render_userbot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
+# Handler: Manba kanaldan xabarni olib, manbani ko'rsatmasdan nusxalash
+# "SOURCE_CHANNEL" o'rniga kanal username yoki ID sini yozing
+@app.on_message(filters.chat("eltuzar_media")) 
+async def copy_handler(client, message):
+    TARGET_CHAT = "eltuzar_mediaa" # Qayerga yuborilishi
+    try:
+        # copy_message - manbani ko'rsatmaydi, xabarni toza nusxalaydi
+        await client.copy_message(
+            chat_id=TARGET_CHAT,
+            from_chat_id=message.chat.id,
+            message_id=message.id
+        )
+    except Exception as e:
+        print(f"Xatolik: {e}")
 
-
-# ================= QO'SHIMCHA MATN =================
-FOOTER_TEXT = "\n\n[ХАБАРИНГИЗНИ ЮБОРМОҚЧИ БЎЛСАНГИЗ УШБУ ҲАВОЛА УСТИГА БОСИНГ 👈](https://t.me/eltuzar_uz_bot)"
-
-
-# ================= XABARLARNI USHLASH VA YUBORISH =================
-@app.on_message()
-async def forward_and_edit(client: Client, message: Message):
-    # Kanal username'ini tekshiramiz (ID bo'lsa ham ishlaydi)
-    chat_username = f"@{message.chat.username}" if message.chat.username else str(message.chat.id)
-    
-    # Faqat bizga kerakli kanaldan kelganini tekshiramiz
-    if chat_username == SOURCE_CHANNEL or str(message.chat.id) == SOURCE_CHANNEL:
-        try:
-            new_text = (message.caption or message.text or "") + FOOTER_TEXT
-
-            if message.photo:
-                await client.send_photo(chat_id=TARGET_CHANNEL, photo=message.photo.file_id, caption=new_text)
-            elif message.video:
-                await client.send_video(chat_id=TARGET_CHANNEL, video=message.video.file_id, caption=new_text)
-            elif message.audio or message.voice:
-                file_id = message.audio.file_id if message.audio else message.voice.file_id
-                await client.send_audio(chat_id=TARGET_CHANNEL, audio=file_id, caption=new_text)
-            elif message.text:
-                await client.send_message(chat_id=TARGET_CHANNEL, text=new_text)
-                
-            print(f"✅ Xabar {TARGET_CHANNEL} ga muvaffaqiyatli yuborildi!")
-        except Exception as e:
-            print(f"❌ Xabar uzatishda xatolik: {e}")
-
-
-# ================= BOTNI 24/7 ISHLATISH VA AVTO-RESTART =================
-async def main():
-    while True:
-        try:
-            print("🚀 Bot ishga tushirilmoqda...")
-            await app.start()
-            print("✅ Bot onlayn!")
-            await asyncio.Future()
-        except Exception as e:
-            print(f"⚠️ Xatolik yuz berdi: {e}. 5 soniyadan so'ng qayta ishga tushiriladi...")
-            await asyncio.sleep(5)
-        finally:
-            await app.stop()
+async def start_userbot():
+    await app.start()
+    print("Userbot muvaffaqiyatli ishga tushdi!")
+    await idle()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Flask ni fon rejimida ishga tushiramiz
+    Thread(target=run_flask, daemon=True).start()
+    # Userbot ni Python 3.14+ uchun mos usulda ishga tushiramiz
+    asyncio.run(start_userbot())
