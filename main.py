@@ -1,24 +1,15 @@
-```python
 import os
 import copy
 import traceback
 from threading import Thread
-
 from flask import Flask
 from pyrogram import Client, filters, idle
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
-
-# =========================
-# Flask keep-alive server
-# =========================
-
 app_flask = Flask(__name__)
-
 @app_flask.route("/")
 def home():
     return "Bot 24/7 ishlamoqda"
-
 def run_flask():
     app_flask.run(
         host="0.0.0.0",
@@ -26,29 +17,17 @@ def run_flask():
         threaded=True,
         use_reloader=False
     )
-
-# =========================
-# Pyrogram config
-# =========================
-
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
 SESSION_STRING = os.environ["SESSION_STRING"]
-
 app = Client(
     "userbot",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
-
 SOURCE_CHAT = "eltuzar_live"
 TARGET_CHAT = "eltuzar_livee"
-
-# =========================
-# Caption/Text edit
-# =========================
-
 def edit_caption_text(message: Message):
     text = message.caption or message.text or ""
     entities = copy.deepcopy(
@@ -63,23 +42,15 @@ def edit_caption_text(message: Message):
         "INSTAGRAM": "https://www.instagram.com/eltuzar_uz",
         "FACEBOOK": "https://www.facebook.com/profile.php?id=61585818251235"
     }
-
     for entity in entities:
         if entity.type == MessageEntityType.TEXT_LINK:
             word = text[
                 entity.offset:entity.offset + entity.length
             ].upper()
-
             for key, value in links.items():
                 if key in word:
                     entity.url = value
-
-    return text, entities
-
-# =========================
-# Forward handler
-# =========================
-
+                    return text, entities
 @app.on_message(filters.chat(SOURCE_CHAT))
 async def forward_handler(client, message):
     try:
@@ -97,18 +68,8 @@ async def forward_handler(client, message):
 
     except Exception:
         traceback.print_exc()
-
-# =========================
-# Main
-# =========================
-
 if __name__ == "__main__":
     Thread(target=run_flask, daemon=True).start()
-
     app.start()
     print("Bot muvaffaqiyatli ishga tushdi!")
-
     idle()
-
-    app.stop()
-```
