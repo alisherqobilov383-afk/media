@@ -1,24 +1,29 @@
+import asyncio
+import sys
+
+# Loopni oldindan yaratib olamiz
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+# Endi kutubxonalarni import qilamiz
 import os
 import copy
 from threading import Thread
 from flask import Flask
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
-from pyrogram.errors import FloodWait
-import asyncio
 
-# Flask serveri (Render uchun)
+# ... qolgan kodlar (app, edit_caption_text, handler, if __name__ == "__main__")
+
+# Flask serveri (Render botni o'chirib qo'ymasligi uchun)
 app_flask = Flask(__name__)
-
 @app_flask.route("/")
 def home():
     return "Bot 24/7 ishlamoqda"
 
 def run_flask():
-    # Render PORT muhit o'zgaruvchisini kutadi
-    port = int(os.environ.get("PORT", 8080))
-    app_flask.run(host="0.0.0.0", port=port)
+    app_flask.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 # Pyrogram sozlamalari
 API_ID = int(os.environ.get("API_ID", 0))
@@ -46,10 +51,9 @@ def edit_caption_text(message: Message):
             for key, val in links.items():
                 if key in word:
                     entity.url = val
-    # 'return' endi funksiya ichida ekanligiga amin bo'ldik
     return text, entities
 
-@app.on_message(filters.chat("tuztuzttt"))
+@app.on_message(filters.chat("eltuzar_live"))
 async def forward_handler(client, message):
     TARGET_CHAT = "eltuzar_livee"
     try:
@@ -61,13 +65,11 @@ async def forward_handler(client, message):
             caption=text,
             caption_entities=entities
         )
-    except FloodWait as e:
-        await asyncio.sleep(e.value)
     except Exception as e:
         print(f"Xatolik: {e}")
 
 if __name__ == "__main__":
-    # Flask ni fon rejimida ishga tushiramiz
     Thread(target=run_flask, daemon=True).start()
-    # Pyrogram ni asosiy oqimda ishga tushiramiz
-    app.run()
+    app.start()
+    print("Bot muvaffaqiyatli ishga tushdi!")
+    idle()
