@@ -1,85 +1,40 @@
 import os
-import copy
-import traceback
-from threading import Thread
-from flask import Flask
-from pyrogram import Client, filters, idle
-from pyrogram.enums import MessageEntityType
+import asyncio
+from telethon import TelegramClient, events
 
-# Flask serveri
-app_flask = Flask(__name__)
+# Muhit o'zgaruvchilari (Environment Variables)
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+STRING_SESSION = os.getenv("STRING_SESSION")
 
-@app_flask.route("/")
-def home():
-    return "Bot 24/7 ishlamoqda"
+# Manba va maqsad kanallar (ID yoki username yozing)
+SOURCE_CHANNELS = [-1003545472423, "@eltuzar_live"] 
+DESTINATION_CHANNELS = [-1003797840044, "@tuztuzttt"]
 
-def run_flask():
-    app_flask.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8080)),
-        threaded=True,
-        use_reloader=False
-    )
+# Clientni ishga tushirish
+client = TelegramClient('userbot', API_ID, API_HASH)
 
-# Pyrogram mijozini sozlash
-API_ID = int(os.environ["API_ID"])
-API_HASH = os.environ["API_HASH"]
-SESSION_STRING = os.environ["SESSION_STRING"]
-
-app = Client(
-    "userbot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=SESSION_STRING
-)
-
-SOURCE_CHAT = "tuztuzttt"
-TARGET_CHAT = "eltuzar_livee"
-
-def edit_caption_text(message: Message):
-    text = message.caption or message.text or ""
-    entities = copy.deepcopy(message.caption_entities or message.entities or [])
-    
-    links = {
-        "ХАБАРИНГИЗНИ": "https://t.me/eltuzar_uz_bot",
-        "LIVE": "https://t.me/eltuzar_livee",
-        "MEDIA": "https://t.me/eltuzar_mediaa",
-        "X": "https://x.com/eltuzar_uz",
-        "INSTAGRAM": "https://www.instagram.com/eltuzar_uz",
-        "FACEBOOK": "https://www.facebook.com/profile.php?id=61585818251235"
-    }
-    
-    for entity in entities:
-        if entity.type == MessageEntityType.TEXT_LINK:
-            word = text[entity.offset:entity.offset+entity.length].upper()
-            for key, val in links.items():
-                if key in word:
-                    entity.url = val
-    return text, entities
-
-
-@app.on_message(filters.chat(SOURCE_CHAT))
-async def forward_handler(client, message):
+@client.on(events.NewMessage(chats=SOURCE_CHANNELS))
+async def forward_handler(event):
+    """
+    Manba kanalga xabar kelganda, uni belgilangan maqsadli
+    kanallarga forward qiladi.
+    """
     try:
-        text, entities = edit_caption_text(message)
+        for dest in DESTINATION_CHANNELS:
+            # Xabarni forward qilish
+            await client.forward_messages(dest, event.message)
+            # Yoki faqat matn/media nusxasini yuborish uchun:
+            # await client.send_message(dest, event.message)
+            
+            await asyncio.sleep(1) # Kanallar ko'p bo'lsa, limitga tushmaslik uchun kutish
+    except Exception as e:
+        print(f"Xatolik yuz berdi: {e}")
 
-        await client.copy_message(
-            chat_id=TARGET_CHAT,
-            from_chat_id=message.chat.id,
-            message_id=message.id,
-            caption=text,
-            caption_entities=entities
-        )
-        print(f"Forward qilindi: {message.id}")
-
-    except Exception:
-        traceback.print_exc()
+async def main():
+    await client.start()
+    print("Bot muvaffaqiyatli ishga tushdi va kuzatmoqda...")
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    # Flask ni fon rejimida ishga tushirish
-    Thread(target=run_flask, daemon=True).start()
-    
-    # Botni ishga tushirish
-    app.start()
-    print("Bot muvaffaqiyatli ishga tushdi!")
-    idle()
+    asyncio.run(main())
