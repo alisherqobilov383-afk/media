@@ -1,26 +1,17 @@
-import sys
 import os
 import asyncio
-import copy
-
-# 1. PYROGRAM SYNC MODULINI BUTUNLAY O'CHIRAMIZ (Xatolikni oldini olish uchun)
-class FakeSync:
-    def __getattr__(self, name): return None
-sys.modules["pyrogram.sync"] = FakeSync()
-
 from flask import Flask
 from threading import Thread
 from pyrogram import Client, filters
-from pyrogram.enums import MessageEntityType
-from pyrogram.types import Message
 
 # ================= SERVER (UPTIME) =================
-flask_app = Flask("")
-@flask_app.route("/")
+# Render botni "yotib qolmasligi" uchun oddiy web server
+app_server = Flask("")
+@app_server.route("/")
 def home(): return "Bot 24/7 ishlamoqda!"
 
 def run_flask():
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    app_server.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 Thread(target=run_flask, daemon=True).start()
 
@@ -32,28 +23,30 @@ async def start_bot():
     source_channel = os.environ.get("SOURCE_CHANNEL", "@eltuzar_live")
     target_channel = os.environ.get("TARGET_CHANNEL", "@tuztuzttt")
 
-    if not api_id or not api_hash:
-        print("❌ XATOLIK: API_ID yoki API_HASH topilmadi!")
+    if not all([api_id, api_hash, session_string]):
+        print("❌ XATOLIK: API_ID, API_HASH yoki SESSION_STRING topilmadi!")
         return
 
-    app = Client("render_userbot", api_id=int(api_id), api_hash=api_hash, session_string=session_string)
+    # Clientni ishga tushirish
+    app = Client(
+        "render_userbot", 
+        api_id=int(api_id), 
+        api_hash=api_hash, 
+        session_string=session_string
+    )
 
     @app.on_message(filters.chat(source_channel))
-    async def forward_and_edit(client: Client, message: Message):
-        new_text, new_entities = edit_caption_text(message)
+    async def forward_handler(client, message):
         try:
-            if message.photo: await client.send_photo(target_channel, photo=message.photo.file_id, caption=new_text, caption_entities=new_entities)
-            elif message.video: await client.send_video(target_channel, video=message.video.file_id, caption=new_text, caption_entities=new_entities)
-            elif message.audio or message.voice: await client.send_audio(target_channel, audio=(message.audio or message.voice).file_id, caption=new_text, caption_entities=new_entities)
-            elif message.text: await client.send_message(target_channel, text=new_text, entities=new_entities)
-        except Exception as e: print(f"❌ Xatolik: {e}")
+            # Xabarni to'g'ridan-to'g'ri forward qilish
+            await message.forward(target_channel)
+        except Exception as e:
+            print(f"❌ Forward qilishda xatolik: {e}")
 
     await app.start()
-    print(f"🚀 Bot ishga tushdi! Kuzatilmoqda: {source_channel}")
-    
-    # IDLE o'rniga barqaror kutish sikli
-    while True:
-        await asyncio.sleep(3600)
+    print(f"🚀 Bot ishga tushdi va 24/7 kuzatmoqda: {source_channel}")
+    # Bot to'xtamasligi uchun abadiy kutish
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(start_bot())
