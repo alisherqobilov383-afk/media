@@ -1,44 +1,51 @@
-import sys
 import os
 import asyncio
-from types import ModuleType
-
-# PYROGRAM SYNC MODULINI BUTUNLAY O'CHIRIB TASHLAYMIZ
-sys.modules["pyrogram.sync"] = ModuleType("pyrogram.sync")
-
+import logging
 from flask import Flask
 from threading import Thread
-from pyrogram import Client
+from pyrogram import Client, filters
 
-# Server (24/7 Uptime)
+# Loglarni sozlash
+logging.basicConfig(level=logging.INFO)
+
+# 1. 24/7 Server
 app_server = Flask(__name__)
 @app_server.route("/")
-def home(): return "Bot ishlamoqda"
+def home(): return "Bot 24/7 faol"
 
 def run_server():
     app_server.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
 Thread(target=run_server, daemon=True).start()
 
+# 2. Bot Mantiqi
 async def main():
-    # Environment Variables
-    api_id = int(os.environ.get("API_ID"))
-    api_hash = os.environ.get("API_HASH")
-    session = os.environ.get("SESSION_STRING")
-    src = os.environ.get("SOURCE_CHANNEL")
-    dst = os.environ.get("TARGET_CHANNEL")
+    # Environment Variables ni o'qish
+    api_id = int(os.environ["API_ID"])
+    api_hash = os.environ["API_HASH"]
+    session_string = os.environ["SESSION_STRING"]
+    source = os.environ["SOURCE_CHANNEL"]
+    target = os.environ["TARGET_CHANNEL"]
 
-    # Botni ishga tushirish
-    client = Client("bot", api_id=api_id, api_hash=api_hash, session_string=session)
+    # Client (faqat asinxron rejimda)
+    app = Client("userbot", api_id=api_id, api_hash=api_hash, session_string=session_string)
 
-    @client.on_message(filters=None) # Barcha xabarlarni kuzatish
-    async def handler(c, m):
-        if str(m.chat.id) == src or m.chat.username == src.replace("@", ""):
-            await c.copy_message(dst, m.chat.id, m.id)
+    @app.on_message(filters.chat(source))
+    async def forwarder(client, message):
+        try:
+            # Xabarni nusxalash
+            await client.copy_message(chat_id=target, from_chat_id=message.chat.id, message_id=message.id)
+        except Exception as e:
+            logging.error(f"Xatolik: {e}")
 
-    await client.start()
-    print("Bot muvaffaqiyatli ishga tushdi!")
-    await asyncio.Event().wait()
+    await app.start()
+    logging.info("Bot muvaffaqiyatli ishga tushdi!")
+    
+    # 3.4+ talabiga mos kutish mexanizmi
+    await asyncio.get_running_loop().create_future()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
