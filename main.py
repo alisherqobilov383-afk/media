@@ -1,17 +1,12 @@
 import sys
+import os
 import asyncio
 
-# 1. Importlardan oldin Event Loop yaratib olamiz
+# --- PYROGRAM IMPORT QILINISHIDAN OLDIN EVENT LOOP O'RNATILADI ---
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
+# -----------------------------------------------------------------
 
-# 2. Pyrogram.sync modulini soxtalashtiramiz (import vaqtida xatolik bermasligi uchun)
-from types import ModuleType
-sync_mock = ModuleType("pyrogram.sync")
-sys.modules["pyrogram.sync"] = sync_mock
-
-# Endi Pyrogram importlarini amalga oshiramiz
-import os
 from flask import Flask
 from threading import Thread
 from pyrogram import Client, filters
@@ -36,9 +31,10 @@ async def main():
     target_channel = os.environ.get("TARGET_CHANNEL")
 
     if not all([api_id, api_hash, session_string, source_channel, target_channel]):
-        print("❌ XATOLIK: Muhit o'zgaruvchilari topilmadi!")
+        print("❌ XATOLIK: Barcha kerakli ma'lumotlar kiritilmagan!")
         return
 
+    # Userbotni ishga tushirish
     app = Client("render_userbot", api_id=int(api_id), api_hash=api_hash, session_string=session_string)
 
     @app.on_message(filters.chat(int(source_channel) if source_channel.startswith('-') else source_channel))
@@ -49,16 +45,14 @@ async def main():
                 from_chat_id=message.chat.id,
                 message_id=message.id
             )
-            print(f"✅ Xabar uzatildi: {message.id}")
+            print(f"✅ Xabar muvaffaqiyatli uzatildi: {message.id}")
         except Exception as e:
             print(f"❌ Xatolik: {e}")
 
     await app.start()
-    print(f"🚀 Bot ishga tushdi!")
+    print(f"🚀 Bot ishga tushdi! {source_channel} -> {target_channel}")
+    # Botni to'xtamasdan ishlashini ta'minlash
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    asyncio.run(main())
