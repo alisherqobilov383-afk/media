@@ -1,10 +1,18 @@
+import sys
 import os
-import copy
 import asyncio
+import copy
 from threading import Thread
 
+# PYROGRAM SYNC PATCH (Python 3.14 uchun)
+class FakeSync:
+    def __getattr__(self, name):
+        return None
+
+sys.modules["pyrogram.sync"] = FakeSync()
+
 from flask import Flask
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
 
@@ -38,29 +46,45 @@ def edit_caption_text(message: Message):
 
     for entity in entities:
         if entity.type == MessageEntityType.TEXT_LINK:
+
             word = text[
                 entity.offset:
                 entity.offset + entity.length
             ].upper()
 
-            if "LIVE" in word:
+            if any(
+                x in word for x in [
+                    "ХАБАРИНГИЗНИ ЮБОРМОҚЧИ БЎЛСАНГИЗ УШБУ ҲАВОЛА УСТИГА БОСИНГ",
+                    "ЮБОРМОҚЧИ",
+                    "УШБУ"
+                ]
+            ):
+                entity.url = "https://t.me/eltuzar_uz_bot"
+
+            elif "LIVE" in word:
                 entity.url = "https://t.me/eltuzar_livee"
 
             elif "MEDIA" in word:
                 entity.url = "https://t.me/eltuzar_media"
 
+            elif "X" == word:
+                entity.url = "https://x.com/eltuzar_uz"
+
             elif "INSTAGRAM" in word:
-                entity.url = "https://instagram.com/eltuzaar_uz"
+                entity.url = "https://www.instagram.com/eltuzaar_uz"
+
+            elif "FACEBOOK" in word:
+                entity.url = "https://www.facebook.com/profile.php?id=61585818251235"
 
     return text, entities
 
 # ================= BOT =================
 
-async def main():
+async def start_bot():
 
-    api_id = int(os.environ["API_ID"])
-    api_hash = os.environ["API_HASH"]
-    session_string = os.environ["SESSION_STRING"]
+    api_id = os.environ.get("API_ID")
+    api_hash = os.environ.get("API_HASH")
+    session_string = os.environ.get("SESSION_STRING")
 
     source_channel = os.environ.get(
         "SOURCE_CHANNEL",
@@ -73,8 +97,8 @@ async def main():
     )
 
     app = Client(
-        "userbot",
-        api_id=api_id,
+        "render_userbot",
+        api_id=int(api_id),
         api_hash=api_hash,
         session_string=session_string
     )
@@ -84,11 +108,11 @@ async def main():
 
         try:
             print(
-                f"NEW POST | "
-                f"ID={message.chat.id} | "
+                f"POST => "
+                f"CHAT_ID={message.chat.id} | "
                 f"USERNAME={message.chat.username} | "
                 f"TITLE={message.chat.title} | "
-                f"MSG={message.id}"
+                f"MSG_ID={message.id}"
             )
         except Exception as e:
             print("DEBUG ERROR:", e)
@@ -97,7 +121,7 @@ async def main():
     async def forward_post(client, message):
 
         print(
-            f"TOPILDI => "
+            f"TARGET TOPILDI => "
             f"{message.chat.title} | "
             f"{message.id}"
         )
@@ -133,11 +157,29 @@ async def main():
                     caption_entities=new_entities
                 )
 
+            elif message.voice:
+
+                await client.send_voice(
+                    target_channel,
+                    voice=message.voice.file_id,
+                    caption=new_text,
+                    caption_entities=new_entities
+                )
+
+            elif message.document:
+
+                await client.send_document(
+                    target_channel,
+                    document=message.document.file_id,
+                    caption=new_text,
+                    caption_entities=new_entities
+                )
+
             elif message.text:
 
                 await client.send_message(
                     target_channel,
-                    new_text,
+                    text=new_text,
                     entities=new_entities
                 )
 
@@ -152,12 +194,13 @@ async def main():
 
     print("=" * 50)
     print("USERBOT ISHGA TUSHDI")
-    print("ACCOUNT:", me.first_name)
+    print("USER:", me.first_name)
     print("SOURCE:", source_channel)
     print("TARGET:", target_channel)
     print("=" * 50)
 
-    await idle()
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(start_bot())
