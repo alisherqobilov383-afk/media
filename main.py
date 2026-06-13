@@ -1,8 +1,23 @@
 import os
 import asyncio
-import re
+from flask import Flask
+from threading import Thread
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
+
+# ================= WEB SERVER (RENDER PORT FIX) =================
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running"
+
+def run_web():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+Thread(target=run_web, daemon=True).start()
+
+# ================= TELEGRAM BOT =================
 
 api_id = int(os.environ["API_ID"])
 api_hash = os.environ["API_HASH"]
@@ -13,19 +28,18 @@ target = os.environ["TARGET_CHANNEL"]
 
 client = TelegramClient(StringSession(session), api_id, api_hash)
 
-# ================= LINK MAP =================
+# ================= LINK REPLACE =================
 LINK_MAP = {
     "https://t.me/eltuzportali_bot": "https://t.me/eltuzar_uz_bot",
-    "https://t.me/eltuzar_live": "https://t.me/eltuzar_livee",
-    "instagram.com/old": "instagram.com/new"
+    "https://t.me/eltuzar_live": "https://t.me/eltuzar_livee"
 }
 
-def replace_links(text: str):
+def replace_links(text):
     if not text:
         return text
 
     for old, new in LINK_MAP.items():
-        text = re.sub(old, new, text, flags=re.IGNORECASE)
+        text = text.replace(old, new)
 
     return text
 
@@ -56,7 +70,7 @@ async def album_handler(event):
     except Exception as e:
         print("ALBUM ERROR:", e)
 
-# ================= SINGLE MESSAGES =================
+# ================= NORMAL MESSAGES =================
 @client.on(events.NewMessage(chats=source))
 async def handler(event):
     try:
@@ -64,33 +78,23 @@ async def handler(event):
 
         text = replace_links(msg.text or msg.message or "")
 
-        # TEXT
         if msg.text:
             await client.send_message(target, text)
 
-        # PHOTO
         elif msg.photo:
             await client.send_file(target, msg.photo, caption=text)
 
-        # VIDEO
         elif msg.video:
             await client.send_file(target, msg.video, caption=text)
 
-        # DOCUMENT
         elif msg.document:
             await client.send_file(target, msg.document, caption=text)
 
-        # AUDIO
         elif msg.audio:
             await client.send_file(target, msg.audio, caption=text)
 
-        # VOICE
         elif msg.voice:
             await client.send_file(target, msg.voice, caption=text)
-
-        # GIF
-        elif msg.gif:
-            await client.send_file(target, msg.gif, caption=text)
 
         print("OK:", msg.id)
 
@@ -100,7 +104,7 @@ async def handler(event):
 # ================= START =================
 async def main():
     await client.start()
-    print("PRO+ BOT STARTED")
+    print("BOT STARTED")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
