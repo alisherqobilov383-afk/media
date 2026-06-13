@@ -1,44 +1,56 @@
 import os
 import asyncio
+from flask import Flask
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
+# -------- FLASK (Render port uchun) --------
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot ishlayapti"
+
+def run_web():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+# -------- TELEGRAM BOT --------
 api_id = int(os.environ["API_ID"])
 api_hash = os.environ["API_HASH"]
 session = os.environ["SESSION_STRING"]
 
-source = os.environ.get("SOURCE_CHANNEL", "@werwe2323")
-target = os.environ.get("TARGET_CHANNEL", "@wergfdgsdfsfwerw")
+source = os.environ["SOURCE_CHANNEL"]
+target = os.environ["TARGET_CHANNEL"]
 
 client = TelegramClient(StringSession(session), api_id, api_hash)
 
 @client.on(events.NewMessage(chats=source))
 async def handler(event):
     try:
-        message = event.message
+        msg = event.message
 
-        # text
-        if message.text:
-            await client.send_message(target, message.text)
+        if msg.text:
+            await client.send_message(target, msg.text)
 
-        # photo
-        elif message.photo:
-            await client.send_file(target, message.photo, caption=message.text or "")
+        elif msg.photo:
+            await client.send_file(target, msg.photo, caption=msg.text or "")
 
-        # video
-        elif message.video:
-            await client.send_file(target, message.video, caption=message.text or "")
+        elif msg.video:
+            await client.send_file(target, msg.video, caption=msg.text or "")
 
-        print("FORWARDED:", message.id)
+        print("OK:", msg.id)
 
     except Exception as e:
         print("ERROR:", e)
 
-
-async def main():
+async def telegram_main():
     await client.start()
     print("BOT STARTED")
     await client.run_until_disconnected()
 
+# -------- RUN --------
 if __name__ == "__main__":
-    asyncio.run(main())
+    import threading
+
+    threading.Thread(target=run_web).start()  # Flask port ochadi
+    asyncio.run(telegram_main())
